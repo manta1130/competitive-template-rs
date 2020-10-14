@@ -10,7 +10,8 @@ use std::collections::BinaryHeap;
 ///dist:最短経路を格納する配列
 ///
 ///事前に始点には0を入れ、その他はNoneで初期化する必要がある。
-pub fn bellman_ford(graph: &[&[(usize, isize)]], dist: &mut [Option<isize>]) -> Vec<bool> {
+#[allow(clippy::ptr_arg)]
+pub fn bellman_ford(graph: &Vec<Vec<(usize, isize)>>, dist: &mut [Option<isize>]) -> Vec<bool> {
     //負の閉路検出用
     let mut neg_flag = vec![false; dist.len()];
 
@@ -65,7 +66,8 @@ pub fn bellman_ford(graph: &[&[(usize, isize)]], dist: &mut [Option<isize>]) -> 
 ///
 ///start:始点
 
-pub fn dijkstra(graph: &[&[(usize, isize)]], start: usize) -> Vec<isize> {
+#[allow(clippy::ptr_arg)]
+pub fn dijkstra(graph: &Vec<Vec<(usize, isize)>>, start: usize) -> Vec<isize> {
     let mut heap = BinaryHeap::new();
     let mut dist = vec![isize::max_value(); graph.len()];
     dist[start] = 0;
