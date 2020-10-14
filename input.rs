@@ -8,49 +8,82 @@ thread_local! {
     pub static INPUT_BUFFER:RefCell<std::collections::VecDeque<String>>=RefCell::new(std::collections::VecDeque::new());
 }
 
-/// 空白で区切られた複数の値の読み込む。
-/// # Example
-/// ```ignore
-/// input!(a:usize,b:usize);
-/// ```
 #[macro_export]
-#[allow(unused_macros)]
-macro_rules! inputm {
-    ( $($x:ident : $t:ty),*) => {
-                $(
-                INPUT_BUFFER.with(|p| if p.borrow().len()==0{
-                    let temp_str = input_line_str();
-                    let mut split_result_iter = temp_str.split(SPLIT_DELIMITER).map(|q|q.to_string()).collect::<std::collections::VecDeque<_>>();
-                    p.borrow_mut().append(&mut split_result_iter)
-                });
-                let mut buf_split_result=String::new();
-                INPUT_BUFFER.with(|p| buf_split_result = p.borrow_mut().pop_front().unwrap());
-                    let ($x):($t) = buf_split_result.parse().unwrap();
-                )*
+macro_rules! input_internal {
+    ($x:ident : $t:ty) => {
+        INPUT_BUFFER.with(|p| {
+            if p.borrow().len() == 0 {
+                let temp_str = input_line_str();
+                let mut split_result_iter = temp_str
+                    .split(SPLIT_DELIMITER)
+                    .map(|q| q.to_string())
+                    .collect::<std::collections::VecDeque<_>>();
+                p.borrow_mut().append(&mut split_result_iter)
+            }
+        });
+        let mut buf_split_result = String::new();
+        INPUT_BUFFER.with(|p| buf_split_result = p.borrow_mut().pop_front().unwrap());
+        let $x: $t = buf_split_result.parse().unwrap();
+    };
+    (mut $x:ident : $t:ty) => {
+        INPUT_BUFFER.with(|p| {
+            if p.borrow().len() == 0 {
+                let temp_str = input_line_str();
+                let mut split_result_iter = temp_str
+                    .split(SPLIT_DELIMITER)
+                    .map(|q| q.to_string())
+                    .collect::<std::collections::VecDeque<_>>();
+                p.borrow_mut().append(&mut split_result_iter)
+            }
+        });
+        let mut buf_split_result = String::new();
+        INPUT_BUFFER.with(|p| buf_split_result = p.borrow_mut().pop_front().unwrap());
+        let mut $x: $t = buf_split_result.parse().unwrap();
     };
 }
 
 /// 空白で区切られた複数の値の読み込む。
 /// # Example
 /// ```ignore
-/// input!(a:usize,b:usize);
+/// inputv!(a:usize,mut b:usize);
 /// ```
 #[macro_export]
-#[allow(unused_macros)]
-macro_rules! input_all {
-    ( $($x:ident : $t:ty),*) => {
-                $(
-                INPUT_BUFFER.with(|p| if p.borrow().len()==0{
-                    let mut temp_str = String::new();
-                    std::io::stdin().read_to_string(&mut temp_str).unwrap();
-                    let mut split_result_iter = temp_str.split_whitespace().map(|q|q.to_string()).collect::<std::collections::VecDeque<_>>();
-                    p.borrow_mut().append(&mut split_result_iter)
-                });
-                let mut buf_split_result=String::new();
-                INPUT_BUFFER.with(|p| buf_split_result = p.borrow_mut().pop_front().unwrap());
-                    let ($x):($t) = buf_split_result.parse().unwrap();
-                )*
+macro_rules! inputv {
+    ($i:ident : $t:ty) => {
+        input_internal!{$i : $t}
     };
+    (mut $i:ident : $t:ty) => {
+        input_internal!{mut $i : $t}
+    };
+    ($i:ident : $t:ty $(,)*) => {
+            input_internal!{$i : $t}
+    };
+    (mut $i:ident : $t:ty $(,)*) => {
+            input_internal!{mut $i : $t}
+    };
+    (mut $i:ident : $t:ty,$($q:tt)*) => {
+            input_internal!{mut $i : $t}
+            inputv!{$($q)*}
+    };
+    ($i:ident : $t:ty,$($q:tt)*) => {
+            input_internal!{$i : $t}
+            inputv!{$($q)*}
+    };
+}
+
+///終端まで文字を読み込む
+pub fn input_all() {
+    INPUT_BUFFER.with(|p| {
+        if p.borrow().len() == 0 {
+            let mut temp_str = String::new();
+            std::io::stdin().read_to_string(&mut temp_str).unwrap();
+            let mut split_result_iter = temp_str
+                .split_whitespace()
+                .map(|q| q.to_string())
+                .collect::<std::collections::VecDeque<_>>();
+            p.borrow_mut().append(&mut split_result_iter)
+        }
+    });
 }
 
 /// 文字列を一行読み込む
