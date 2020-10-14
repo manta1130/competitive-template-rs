@@ -66,3 +66,26 @@ where
     v[pivot + 1..].reverse();
     true
 }
+
+pub fn seq_compress<T>(v: &mut [T], start: T, step: T)
+where
+    T: Ord + Copy + std::ops::AddAssign,
+{
+    let mut buf_v = v.iter().copied().enumerate().collect::<Vec<_>>();
+    buf_v.sort_unstable_by_key(|q| q.1);
+    let mut prev_val = buf_v[0].1;
+    let mut new_val = start;
+    for (_i, x) in buf_v.iter_mut() {
+        if prev_val == *x {
+            *x = new_val;
+        } else {
+            new_val += step;
+            prev_val = *x;
+            *x = new_val;
+        }
+    }
+    buf_v.sort_unstable();
+    for (i, x) in v.iter_mut().enumerate() {
+        *x = buf_v[i].1;
+    }
+}
