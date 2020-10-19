@@ -71,7 +71,7 @@ pub fn seq_compress<T>(v: &mut [T], start: T, step: T)
 where
     T: Ord + Copy + std::ops::AddAssign,
 {
-    let mut buf_v = v.iter().copied().enumerate().collect::<Vec<_>>();
+    let mut buf_v = v.iter().cloned().enumerate().collect::<Vec<_>>();
     buf_v.sort_unstable_by_key(|q| q.1);
     let mut prev_val = buf_v[0].1;
     let mut new_val = start;
