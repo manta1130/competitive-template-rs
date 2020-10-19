@@ -1,45 +1,48 @@
-pub fn upper_bound<T>(v: &[T], k: T) -> usize
+pub trait BSearch<T>
 where
     T: PartialOrd,
 {
-    let mut from = 0;
-    let mut to = v.len();
-
-    while to - from > 1 {
-        let mid = (from + to) / 2;
-        if v[mid] <= k {
-            from = mid;
-        } else {
-            to = mid;
-        }
-    }
-    if v[from] > k {
-        from
-    } else {
-        to
-    }
+    fn lower_bound(&self, k: T) -> usize;
+    fn upper_bound(&self, k: T) -> usize;
 }
 
-pub fn lower_bound<T>(v: &[T], k: T) -> usize
+impl<T> BSearch<T> for Vec<T>
 where
     T: PartialOrd,
 {
-    let mut from = 0;
-    let mut to = v.len();
-
-    while to - from > 1 {
-        let mid = (from + to) / 2;
-        if v[mid] < k {
-            from = mid;
+    fn lower_bound(&self, k: T) -> usize {
+        let mut from = 0;
+        let mut to = self.len();
+        while to - from > 1 {
+            let mid = (from + to) / 2;
+            if self[mid] < k {
+                from = mid;
+            } else {
+                to = mid;
+            }
+        }
+        if self[from] < k {
+            to
         } else {
-            to = mid;
+            from
         }
     }
-
-    if v[from] < k {
-        to
-    } else {
-        from
+    fn upper_bound(&self, k: T) -> usize {
+        let mut from = 0;
+        let mut to = self.len();
+        while to - from > 1 {
+            let mid = (from + to) / 2;
+            if self[mid] <= k {
+                from = mid;
+            } else {
+                to = mid;
+            }
+        }
+        if self[from] > k {
+            from
+        } else {
+            to
+        }
     }
 }
 
