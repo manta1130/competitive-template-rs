@@ -1,7 +1,41 @@
 use std::iter::Iterator;
 
-type ValueType = usize;
+type ValueType = u64;
 
+pub trait GetDivisor {
+    fn get_divisor(&self) -> Divisor;
+}
+
+macro_rules! GetDivisor_macro{
+    ($($t:ty),*) => {
+        $(
+        impl GetDivisor for $t {
+            fn get_divisor(&self) -> Divisor {
+                Divisor::calc(*self as ValueType)
+            }
+        })*
+    };
+
+}
+
+GetDivisor_macro!(u32, u64, u128, usize, i32, i64, i128, isize);
+
+pub trait GetPrimeFactorization {
+    fn prime_factorization(&self) -> PrimeFactorization;
+}
+
+macro_rules! PrimeFactorization_macro{
+    ($($t:ty),*) => {
+        $(
+        impl GetPrimeFactorization for $t {
+            fn prime_factorization(&self) -> PrimeFactorization {
+                PrimeFactorization::calc(*self as ValueType)
+            }
+        })*
+    };
+}
+
+PrimeFactorization_macro!(u32, u64, u128, usize, i32, i64, i128, isize);
 pub struct Divisor {
     n: ValueType,
     cur: ValueType,
@@ -107,14 +141,14 @@ impl<'a> Iterator for PrimeFactorization<'a> {
     }
 }
 
-pub fn get_primelist(u: usize) -> Vec<usize> {
-    let mut v = vec![true; u + 1];
+pub fn get_primelist(u: ValueType) -> Vec<ValueType> {
+    let mut v = vec![true; u as usize + 1];
     let mut r = vec![];
-    for i in 2..=u {
+    for i in 2..=u as usize {
         if v[i] {
-            r.push(i);
+            r.push(i as ValueType);
             let mut j = i * 2;
-            while j <= u {
+            while j <= u as usize {
                 v[j] = false;
                 j += i;
             }
