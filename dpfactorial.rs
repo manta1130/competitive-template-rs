@@ -1,16 +1,17 @@
 use crate::modint::*;
-pub struct DPFactorial {
+
+#[derive(Default)]
+pub struct DpFactorial {
     normal: Vec<ModInt>,
     inv: Vec<ModInt>,
 }
-impl DPFactorial {
+impl DpFactorial {
     #[allow(dead_code)]
-    pub fn new(modulus: u32) -> DPFactorial {
-        let mut obj = DPFactorial {
+    pub fn new() -> DpFactorial {
+        let mut obj = DpFactorial {
             normal: Vec::new(),
             inv: Vec::new(),
         };
-        ModInt::set_modulus(modulus);
         obj.normal.push(ModInt::new(1));
         obj.inv.push(ModInt::new(1));
         obj
