@@ -173,7 +173,25 @@ pub fn get_mobius(n: ValueType) -> Vec<isize> {
     r
 }
 
-fn modpow(mut s: u128, mut n: u128, p: u128) -> u128 {
+fn modpow_128bit(mut s: u128, mut n: u128, p: u128) -> u128 {
+    if p == 0 {
+        return 1;
+    }
+    let mut t = s;
+    s = 1;
+    while n > 0 {
+        if n & 1 != 0 {
+            s *= t;
+            s %= p;
+        }
+        n >>= 1;
+        t *= t;
+        t %= p;
+    }
+    s
+}
+
+fn modpow_64bit(mut s: u64, mut n: u64, p: u64) -> u64 {
     if p == 0 {
         return 1;
     }
@@ -221,30 +239,118 @@ pub fn miller_rabin(n: u64) -> bool {
     .collect::<Vec<_>>();
 
     let millor_rabin_inner = |a| {
-        if modpow(a as u128, t as u128, n as u128) == 1 {
+        if modpow_128bit(a as u128, t as u128, n as u128) == 1 {
             return true;
         }
 
         for i in 0..s {
-            if modpow(a as u128, 2_u128.pow(i) * t as u128, n as u128) as u64 == n - 1 {
+            if modpow_128bit(a as u128, 2_u128.pow(i) * t as u128, n as u128) as u64 == n - 1 {
                 return true;
             }
         }
         false
     };
 
-    for a in arr {
-        if !millor_rabin_inner(a) {
-            return false;
+    let millor_rabin_inner_small = |a| {
+        if modpow_64bit(a, t, n) == 1 {
+            return true;
+        }
+
+        for i in 0..s {
+            if modpow_64bit(a, 2_u64.pow(i) * t, n) == n - 1 {
+                return true;
+            }
+        }
+        false
+    };
+
+    if n < 4_759_123_141 {
+        for a in arr {
+            if !millor_rabin_inner_small(a) {
+                return false;
+            }
+        }
+    } else {
+        for a in arr {
+            if !millor_rabin_inner(a) {
+                return false;
+            }
         }
     }
 
     true
 }
 
+fn gcd_u64(a: u64, b: u64) -> u64
+where
+{
+    if b + b == b {
+        return a;
+    }
+    gcd_u64(b, a % b)
+}
+
+pub struct PollardRho {
+    arr: Vec<u64>,
+}
+
+impl PollardRho {
+    pub fn calc(n: u64) -> PollardRho {
+        PollardRho { arr: vec![n] }
+    }
+}
+
+impl Iterator for PollardRho {
+    type Item = ValueType;
+
+    #[allow(clippy::many_single_char_names)]
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.arr.is_empty() {
+            return None;
+        }
+        let n = self.arr.pop().unwrap();
+        if n == 1 {
+            return None;
+        }
+        if miller_rabin(n) {
+            let r = n;
+            return Some(r);
+        }
+        if n % 2 == 0 {
+            self.arr.push(n / 2);
+            return Some(2);
+        }
+
+        let f = |x, seed| ((x as u128 * x as u128 + seed as u128) % n as u128) as u64;
+        let f_small = |x, seed| ((x * x + seed) % n);
+
+        for s in 1.. {
+            let (mut x, mut y, mut d) = (2, 2, 1);
+
+            while d == 1 {
+                if n <= 1_000_000_000 {
+                    x = f_small(x, s);
+                    y = f_small(f_small(y, s), s);
+                } else {
+                    x = f(x, s);
+                    y = f(f(y, s), s);
+                }
+                d = gcd_u64(std::cmp::max(x, y) - std::cmp::min(x, y), n)
+            }
+            if d != n {
+                self.arr.push(n / d);
+                self.arr.push(d);
+                return self.next();
+            }
+        }
+        panic![];
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::XorShift;
 
     #[test]
     fn miller_rabin_works() {
@@ -265,5 +371,18 @@ mod tests {
 
         assert!(prime_list.iter().map(|&q| miller_rabin(q)).all(|q| q));
         assert!(not_prime_list.iter().map(|&q| miller_rabin(q)).all(|q| !q));
+    }
+
+    #[test]
+    fn pollard_rho_works() {
+        let mut rng = XorShift::default();
+        for _ in 0..100 {
+            let num = rng.range_u64(0, 1_000_000_000);
+            let mut slow = PrimeFactorization::calc(num).collect::<Vec<_>>();
+            let mut fast = PollardRho::calc(num).collect::<Vec<_>>();
+            slow.sort_unstable();
+            fast.sort_unstable();
+            assert_eq!(slow, fast);
+        }
     }
 }
