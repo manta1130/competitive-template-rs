@@ -264,7 +264,7 @@ pub fn miller_rabin(n: u64) -> bool {
         false
     };
 
-    if n < 4_759_123_141 {
+    if n < 1_000_000_000 {
         for a in arr {
             if !millor_rabin_inner_small(a) {
                 return false;
@@ -343,7 +343,7 @@ impl Iterator for PollardRho {
                 return self.next();
             }
         }
-        panic![];
+        panic![]
     }
 }
 
@@ -366,6 +366,7 @@ mod tests {
             4_759_123_141,
             1_565_912_117_761,
             8_635_844_967_113_809,
+            406_248_370_438_173_883,
             9_223_372_036_854_775_807,
         ];
 
