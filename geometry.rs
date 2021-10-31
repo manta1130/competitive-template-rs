@@ -1,3 +1,4 @@
+use std::cmp::{Ord, Ordering, PartialOrd};
 use std::collections::VecDeque;
 use std::default::Default;
 use std::ops::{Add, AddAssign, Div, Mul, Neg, Sub, SubAssign};
@@ -11,6 +12,58 @@ pub struct Point<T> {
 impl<T> Point<T> {
     pub fn new(x: T, y: T) -> Point<T> {
         Point { x, y }
+    }
+}
+
+impl<T> Eq for Point<T> where T: PartialEq {}
+
+impl<T> PartialOrd for Point<T>
+where
+    T: Mul<Output = T> + PartialEq + Default + PartialOrd + Add<Output = T> + Copy,
+{
+    fn partial_cmp(&self, other: &Point<T>) -> Option<Ordering> {
+        let get_orthant = |p: &Point<T>| {
+            let zero = T::default();
+            if p.x == zero && p.y == zero {
+                3
+            } else if p.x >= zero && p.y >= zero {
+                4
+            } else if p.x <= zero && p.y >= zero {
+                5
+            } else if p.x <= zero && p.y <= zero {
+                1
+            } else if p.x >= zero && p.y <= zero {
+                2
+            } else {
+                panic![]
+            }
+        };
+
+        let self_orthant = get_orthant(self);
+        let other_orthant = get_orthant(other);
+
+        match self_orthant.cmp(&other_orthant) {
+            Ordering::Less => Some(Ordering::Less),
+            Ordering::Greater => Some(Ordering::Greater),
+            Ordering::Equal => match (self.y * other.x).partial_cmp(&(other.y * self.x)).unwrap() {
+                Ordering::Less => Some(Ordering::Less),
+                Ordering::Greater => Some(Ordering::Greater),
+                Ordering::Equal => Some(
+                    (self.x * self.x + self.y * self.y)
+                        .partial_cmp(&(other.x * other.x + other.y * other.y))
+                        .unwrap(),
+                ),
+            },
+        }
+    }
+}
+
+impl<T> Ord for Point<T>
+where
+    T: Mul<Output = T> + Eq + PartialOrd + Default + Add<Output = T> + Copy,
+{
+    fn cmp(&self, other: &Point<T>) -> Ordering {
+        self.partial_cmp(other).unwrap()
     }
 }
 
@@ -159,8 +212,8 @@ where
                 x: self.get_intercept(),
             })
         } else if self.is_horizontal() || self.is_vertical() {
+            let y = self.get_intercept();
             if self.is_horizontal() {
-                let y = self.get_intercept();
                 Some(Point {
                     x: other.substitution_y(y).unwrap(),
                     y,
@@ -319,127 +372,6 @@ where
     (p12.y - p11.y) * (p22.y - p21.y) == -(p22.x - p21.x) * (p12.x - p11.x)
 }
 
-pub fn arg_sort<T>(v: &mut [Point<T>], origin: Point<T>, start: Point<T>)
-where
-    T: Add<Output = T>
-        + Sub<Output = T>
-        + SubAssign
-        + Mul<Output = T>
-        + PartialOrd
-        + Copy
-        + Default,
-{
-    arg_sort_internal(v, origin, start, 0, v.len(), true);
-}
-
-#[allow(clippy::many_single_char_names)]
-fn arg_sort_internal<T>(
-    v: &mut [Point<T>],
-    origin: Point<T>,
-    pivot: Point<T>,
-    f: usize,
-    t: usize,
-    flag: bool,
-) where
-    T: Add<Output = T>
-        + Sub<Output = T>
-        + SubAssign
-        + Mul<Output = T>
-        + PartialOrd
-        + Copy
-        + Default,
-{
-    if f == t {
-        return;
-    }
-    let zero = T::default();
-
-    let mut plus = vec![];
-    let mut minus = vec![];
-    let mut inv = vec![];
-    let mut r = vec![];
-    let mut origin_count = 0_usize;
-
-    for &it in v.iter().take(t).skip(f) {
-        let p = pivot - origin;
-        let c = it - origin;
-        let cx = cross(p, c);
-        if it == origin {
-            origin_count += 1;
-        } else if zero < cx {
-            plus.push(it);
-        } else if zero > cx {
-            minus.push(it);
-        } else if dot(pivot - origin, it - origin) < zero {
-            inv.push(it);
-        } else {
-            r.push(it);
-        }
-    }
-
-    for _ in 0..origin_count {
-        r.insert(0, origin);
-    }
-
-    let mut po = f;
-    if flag {
-        for &i in &r {
-            v[po] = i;
-            po += 1;
-        }
-        for &i in &plus {
-            v[po] = i;
-            po += 1;
-        }
-        for &i in &inv {
-            v[po] = i;
-            po += 1;
-        }
-        for &i in &minus {
-            v[po] = i;
-            po += 1;
-        }
-        let ps = f + r.len();
-        let pe = f + r.len() + plus.len();
-        let ms = f + r.len() + plus.len() + inv.len();
-        let me = f + r.len() + plus.len() + inv.len() + minus.len();
-        if ps != pe {
-            arg_sort_internal(v, origin, v[ps], ps, pe, false);
-        }
-        if ms != me {
-            arg_sort_internal(v, origin, v[ms], ms, me, false);
-        }
-    } else {
-        for &i in &minus {
-            v[po] = i;
-            po += 1;
-        }
-        for &i in &r {
-            v[po] = i;
-            po += 1;
-        }
-        for &i in &plus {
-            v[po] = i;
-            po += 1;
-        }
-        for &i in &inv {
-            v[po] = i;
-            po += 1;
-        }
-        let ms = f;
-        let me = f + minus.len();
-        let ps = f + minus.len() + r.len();
-        let pe = f + minus.len() + r.len() + plus.len();
-
-        if ps != pe {
-            arg_sort_internal(v, origin, v[ps], ps, pe, false);
-        }
-        if ms != me {
-            arg_sort_internal(v, origin, v[ms], ms, me, false);
-        }
-    }
-}
-
 pub fn graham_scan<T>(list: &mut [Point<T>]) -> Vec<Point<T>>
 where
     T: Add<Output = T>
@@ -455,9 +387,7 @@ where
     if list.len() <= 2 {
         return Vec::new();
     }
-    list.sort_by_key(|p| (p.y, p.x));
-    let pivot = Point::new(list[0].x + 1_i8.into(), list[0].y);
-    arg_sort(list, list[0], pivot);
+    list.sort_unstable();
 
     let mut list_dedup = vec![list[0], list[1]];
     let origin = list_dedup[0];
@@ -489,7 +419,7 @@ where
 }
 
 #[cfg(test)]
-#[allow(clippy::clippy::vec_init_then_push)]
+#[allow(clippy::vec_init_then_push)]
 mod tests {
     use super::*;
 
@@ -618,9 +548,10 @@ mod tests {
         v.push(Point::new(3, 0));
         v.push(Point::new(0, -5));
         v.push(Point::new(0, 0));
-        arg_sort(&mut v, Point::new(0, 0), Point::new(10, 0));
+        v.sort_unstable();
 
         let mut va = vec![];
+        va.push(Point::new(0, -5));
         va.push(Point::new(0, 0));
         va.push(Point::new(3, 0));
         va.push(Point::new(1000, 1));
@@ -628,7 +559,6 @@ mod tests {
         va.push(Point::new(1, 9128));
         va.push(Point::new(-3, 63));
         va.push(Point::new(-3, 4));
-        va.push(Point::new(0, -5));
 
         assert_eq!(v, va);
     }
@@ -644,7 +574,7 @@ mod tests {
         v.push(Point::new(0, 3));
         v.push(Point::new(3, -3));
         v.push(Point::new(5, 3));
-        let res = graham_scan(&mut v);
+        let mut res = graham_scan(&mut v);
 
         let mut va = vec![];
         va.push(Point::new(3, -3));
@@ -652,6 +582,9 @@ mod tests {
         va.push(Point::new(2, 5));
         va.push(Point::new(-2, 3));
         va.push(Point::new(-1, -2));
+
+        res.sort_unstable();
+        va.sort_unstable();
 
         assert_eq!(va, res);
     }
