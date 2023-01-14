@@ -1,41 +1,84 @@
-use super::internal_math::{safe_mod, Barrett};
-use super::modint::*;
+const MOD: u128 = (1 << 61) - 1;
+
 pub struct RollingHash {
-    m: u32,
-    v: Vec<u32>,
-    pow: Vec<u32>,
+    v: Vec<u128>,
+    pow: Vec<u128>,
 }
 
-///ローリングハッシュ
+/// ローリングハッシュ
 impl RollingHash {
-    ///ローリングハッシュを計算する。
+    /// ローリングハッシュを計算する。
     ///
     /// base:基数
-    pub fn calc(input_str: &str, base: u32, m: u32) -> RollingHash {
-        ModInt::set_modulus(m);
+    pub fn calc(input_str: &str, base: u128) -> RollingHash {
         let mut v = vec![0];
         let mut pow = vec![1];
-        let mut pow_buf = ModInt::new(base);
-        let base = ModInt::new(base);
-        let mut hash = ModInt::new(0);
+        let mut pow_buf = base;
+
+        let mut hash = 0;
 
         for _ in 0..input_str.len() {
-            pow.push(pow_buf.val());
-            pow_buf *= base;
+            pow.push(pow_buf);
+            pow_buf = mulmod(pow_buf, base);
         }
 
         for c in input_str.as_bytes() {
-            hash *= base;
-            hash += ModInt::new(*c);
-            v.push(hash.val());
+            hash = mulmod(hash, base);
+            hash = addmod(hash, *c as u128);
+            v.push(hash);
         }
-        RollingHash { m, v, pow }
+        RollingHash { v, pow }
     }
 
-    ///[from:to)のローリングハッシュを求める。
-    pub fn get(&self, from: usize, to: usize) -> i64 {
-        let bt = Barrett::new(self.m);
-        let buf = bt.mul(self.v[from], self.pow[to - from]);
-        safe_mod((self.v[to] + self.m - buf) as i64, self.m as i64)
+    /// [from:to)のローリングハッシュを求める。
+    pub fn get(&self, from: usize, to: usize) -> u128 {
+        submod(self.v[to], mulmod(self.v[from], self.pow[to - from]))
+    }
+}
+
+fn mulmod(a: u128, b: u128) -> u128 {
+    let t = a as u128 * b as u128;
+    calcmod(t)
+}
+
+fn addmod(a: u128, b: u128) -> u128 {
+    let t = a as u128 + b as u128;
+    calcmod(t)
+}
+
+fn submod(a: u128, b: u128) -> u128 {
+    let t = a as u128 + MOD - b as u128;
+    calcmod(t)
+}
+
+fn calcmod(mut t: u128) -> u128 {
+    t = (t >> 61) + (t & MOD);
+    if t >= MOD {
+        t - MOD
+    } else {
+        t
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_rolling_hash() {
+        let test_str = "hogehogepiyopiyoabcabc";
+        let hash = RollingHash::calc(test_str, 1234);
+        for i in 0..test_str.len() {
+            for j in i..test_str.len() {
+                for k in 0..test_str.len() {
+                    for l in k..test_str.len() {
+                        assert_eq!(
+                            test_str[i..j] == test_str[k..l],
+                            hash.get(i, j) == hash.get(k, l)
+                        );
+                    }
+                }
+            }
+        }
     }
 }
